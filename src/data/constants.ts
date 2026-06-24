@@ -2,6 +2,10 @@
 export const REFERENCE_WIDTH = 390;
 export const REFERENCE_HEIGHT = 844;
 
+/** Below this — compact layout (phones); desktop authoring stays untouched */
+export const COMPACT_MAX_WIDTH = 520;
+export const COMPACT_MIN_HEIGHT = 640;
+
 /** Maps Z-units to physical scroll pixels */
 export const SCROLL_PIXEL_RATIO = 0.65;
 

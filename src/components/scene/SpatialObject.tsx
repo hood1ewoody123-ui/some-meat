@@ -11,7 +11,12 @@ import {
   stopDriftAnimation,
 } from "@/lib/gsap/driftAnimation";
 import { getAnchorPlacementTranslate } from "@/lib/spatial/anchor";
-import { getViewportScale as calcScale } from "@/lib/spatial/coords";
+import {
+  getSpatialViewportMetrics,
+  resolveContentScale,
+  resolveSpatialPosition,
+} from "@/lib/spatial/coords";
+import { applyMobileLayout } from "@/lib/spatial/mobileLayout";
 import {
   computeLifecycleState,
   shouldRenderObject,
@@ -41,11 +46,6 @@ export function SpatialObject({
   const { enabled: layoutEdit, getEffective } = useLayoutEditor();
 
   const effective = getEffective(object);
-  const layoutObject: FlatSceneObject = {
-    ...object,
-    position: { ...object.position, x: effective.x, y: effective.y },
-    scale: effective.scale,
-  };
 
   const relativeZ = object.position.z + cameraZ;
   const state = computeLifecycleState(
@@ -87,19 +87,38 @@ export function SpatialObject({
 
   if (!visible) return null;
 
-  const vpScale = calcScale(viewportWidth, viewportHeight);
-  const x = layoutObject.position.x * vpScale + state.offsetX;
-  const y = layoutObject.position.y * vpScale + state.offsetY;
-  const totalScale = layoutObject.scale * state.scale * vpScale;
-  const rotation = object.rotation ?? 0;
-  const refW = object.displayWidth ?? 200;
-  const refH = object.displayHeight ?? refW * 0.72;
+  const metrics = getSpatialViewportMetrics(viewportWidth, viewportHeight);
+  const layoutObject = applyMobileLayout(
+    {
+      ...object,
+      position: { ...object.position, x: effective.x, y: effective.y },
+      scale: effective.scale,
+    },
+    metrics,
+  );
+  const placed = resolveSpatialPosition(
+    layoutObject.position.x,
+    layoutObject.position.y,
+    metrics,
+  );
+  const x = placed.x + state.offsetX;
+  const y = placed.y + state.offsetY;
+  const refW = layoutObject.displayWidth ?? (layoutObject.type === "text" ? 280 : 200);
+  const refH = layoutObject.displayHeight ?? refW * 0.72;
+  const totalScale = resolveContentScale(
+    layoutObject.scale,
+    state.scale,
+    metrics,
+    viewportWidth,
+    refW,
+  );
+  const rotation = layoutObject.rotation ?? 0;
   const placement = getAnchorPlacementTranslate(
     refW,
     refH,
     totalScale,
-    object.anchorX,
-    object.anchorY,
+    layoutObject.anchorX,
+    layoutObject.anchorY,
   );
 
   return (
@@ -137,11 +156,11 @@ export function SpatialObject({
               height={object.displayHeight ?? 320}
             />
           )}
-          {object.type === "text" && object.content && (
+          {object.type === "text" && layoutObject.content && (
             <SpatialText
-              content={object.content}
-              maxWidth={object.displayWidth ?? 280}
-              align={object.textAlign ?? "center"}
+              content={layoutObject.content}
+              maxWidth={layoutObject.displayWidth ?? 280}
+              align={layoutObject.textAlign ?? "center"}
             />
           )}
         </div>
