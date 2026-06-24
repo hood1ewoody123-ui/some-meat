@@ -1,0 +1,151 @@
+"use client";
+
+import { useEffect, useRef } from "react";
+import { LayoutEditorControls } from "@/components/scene/LayoutEditorControls";
+import { SpatialSvg } from "@/components/objects/SpatialSvg";
+import { SpatialImage } from "@/components/objects/SpatialImage";
+import { SpatialText } from "@/components/objects/SpatialText";
+import { useLayoutEditor } from "@/context/LayoutEditorContext";
+import {
+  startDriftAnimation,
+  stopDriftAnimation,
+} from "@/lib/gsap/driftAnimation";
+import { getAnchorPlacementTranslate } from "@/lib/spatial/anchor";
+import { getViewportScale as calcScale } from "@/lib/spatial/coords";
+import {
+  computeLifecycleState,
+  shouldRenderObject,
+} from "@/lib/spatial/visibility";
+import { FOG } from "@/data/constants";
+import type { FlatSceneObject } from "@/types/scene";
+
+type SpatialObjectProps = {
+  object: FlatSceneObject;
+  cameraZ: number;
+  viewportWidth: number;
+  viewportHeight: number;
+  contentReveal?: number;
+};
+
+export function SpatialObject({
+  object,
+  cameraZ,
+  viewportWidth,
+  viewportHeight,
+  contentReveal = 1,
+}: SpatialObjectProps) {
+  const driftRef = useRef<HTMLDivElement>(null);
+  const driftX = useRef(0);
+  const driftY = useRef(0);
+  const driftRot = useRef(0);
+  const { enabled: layoutEdit, getEffective } = useLayoutEditor();
+
+  const effective = getEffective(object);
+  const layoutObject: FlatSceneObject = {
+    ...object,
+    position: { ...object.position, x: effective.x, y: effective.y },
+    scale: effective.scale,
+  };
+
+  const relativeZ = object.position.z + cameraZ;
+  const state = computeLifecycleState(
+    relativeZ,
+    object.lifecycle.exitDirection,
+  );
+  const opacity = state.opacity * contentReveal;
+  const visible = shouldRenderObject(relativeZ, opacity);
+  const inFocus =
+    Math.abs(relativeZ) <= FOG.focusWindow && state.blur === 0;
+
+  useEffect(() => {
+    if (!object.drift || !driftRef.current || !visible || layoutEdit) return;
+
+    const target = {
+      setX: (v: number) => {
+        driftX.current = v;
+        if (driftRef.current) {
+          driftRef.current.style.transform = `translate(${v}px, ${driftY.current}px) rotate(${driftRot.current}deg)`;
+        }
+      },
+      setY: (v: number) => {
+        driftY.current = v;
+        if (driftRef.current) {
+          driftRef.current.style.transform = `translate(${driftX.current}px, ${v}px) rotate(${driftRot.current}deg)`;
+        }
+      },
+      setRotation: (v: number) => {
+        driftRot.current = v;
+        if (driftRef.current) {
+          driftRef.current.style.transform = `translate(${driftX.current}px, ${driftY.current}px) rotate(${v}deg)`;
+        }
+      },
+    };
+
+    const tick = startDriftAnimation(target, object.drift);
+    return () => stopDriftAnimation(tick);
+  }, [object.drift, visible, layoutEdit]);
+
+  if (!visible) return null;
+
+  const vpScale = calcScale(viewportWidth, viewportHeight);
+  const x = layoutObject.position.x * vpScale + state.offsetX;
+  const y = layoutObject.position.y * vpScale + state.offsetY;
+  const totalScale = layoutObject.scale * state.scale * vpScale;
+  const rotation = object.rotation ?? 0;
+  const refW = object.displayWidth ?? 200;
+  const refH = object.displayHeight ?? refW * 0.72;
+  const placement = getAnchorPlacementTranslate(
+    refW,
+    refH,
+    totalScale,
+    object.anchorX,
+    object.anchorY,
+  );
+
+  return (
+    <div
+      className="pointer-events-none absolute left-1/2 top-1/2 will-change-transform"
+      style={{
+        transform: `translate3d(${x}px, ${y}px, ${object.position.z}px)`,
+        transformStyle: "preserve-3d",
+        opacity,
+        filter: state.blur > 0 ? `blur(${state.blur}px)` : undefined,
+      }}
+    >
+      <div
+        style={{
+          transform: `translate(${placement.x}px, ${placement.y}px) scale(${totalScale}) rotate(${rotation}deg)`,
+          transformOrigin: "0 0",
+        }}
+      >
+        <LayoutEditorControls object={object} inFocus={inFocus} />
+        <div ref={driftRef}>
+          {object.type === "svg" && object.asset && (
+            <SpatialSvg
+              src={object.asset}
+              alt=""
+              width={object.displayWidth ?? 200}
+              height={object.displayHeight}
+              filtered={object.svgFilter}
+            />
+          )}
+          {object.type === "image" && object.asset && (
+            <SpatialImage
+              src={object.asset}
+              alt=""
+              width={object.displayWidth ?? 240}
+              height={object.displayHeight ?? 320}
+            />
+          )}
+          {object.type === "text" && object.content && (
+            <SpatialText
+              content={object.content}
+              maxWidth={object.displayWidth ?? 280}
+              align={object.textAlign ?? "center"}
+            />
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
