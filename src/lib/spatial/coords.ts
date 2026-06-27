@@ -74,6 +74,8 @@ export function getSpatialViewportMetrics(
 
 const REF_SOFT_X = REFERENCE_WIDTH / 2 - 18;
 const REF_SOFT_Y = REFERENCE_HEIGHT / 2 - 36;
+/** Coords beyond this in ref px are editor artifacts on wide screens */
+const DESKTOP_EXTREME = 720;
 
 function compressAxis(
   value: number,
@@ -90,6 +92,18 @@ function compressAxis(
   return sign * (inZone + overflow * overflowFactor);
 }
 
+function resolveAxis(
+  value: number,
+  softLimit: number,
+  scale: number,
+  overflowFactor: number,
+  softenExtreme: boolean,
+): number {
+  const scaled = value * scale;
+  if (!softenExtreme || Math.abs(value) <= DESKTOP_EXTREME) return scaled;
+  return compressAxis(value, softLimit, scale, overflowFactor);
+}
+
 export function resolveSpatialPosition(
   x: number,
   y: number,
@@ -97,8 +111,8 @@ export function resolveSpatialPosition(
 ): { x: number; y: number } {
   if (!metrics.isCompact) {
     return {
-      x: x * metrics.positionScale,
-      y: y * metrics.positionScale,
+      x: resolveAxis(x, REF_SOFT_X, metrics.positionScale, 0.34, true),
+      y: resolveAxis(y, REF_SOFT_Y, metrics.positionScale, 0.4, true),
     };
   }
 

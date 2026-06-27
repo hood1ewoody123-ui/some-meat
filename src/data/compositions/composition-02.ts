@@ -52,7 +52,7 @@ export const composition02: Composition = {
       id: "judge-2-nik",
       type: "svg",
       asset: "/assets/set2/nik2.svg",
-      position: { x: -1350, y: 18, z: -6190 },
+      position: { x: -520, y: 18, z: -6190 },
       scale: 2.07,
       displayWidth: 260,
       displayHeight: 120,

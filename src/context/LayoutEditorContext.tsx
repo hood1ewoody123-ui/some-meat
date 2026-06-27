@@ -53,18 +53,20 @@ export function LayoutEditorProvider({ enabled, children }: ProviderProps) {
   const [confirmedIds, setConfirmedIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
+    if (!enabled) return;
     const saved = loadLayoutOverrides();
     if (Object.keys(saved).length > 0) {
       setOverrides(saved);
       setConfirmedIds(new Set(Object.keys(saved)));
     }
-  }, []);
+  }, [enabled]);
 
   const getEffective = useCallback(
     (object: FlatSceneObject): LayoutOverride => {
+      if (!enabled) return baseValues(object);
       return overrides[object.id] ?? baseValues(object);
     },
-    [overrides],
+    [enabled, overrides],
   );
 
   const adjust = useCallback(
