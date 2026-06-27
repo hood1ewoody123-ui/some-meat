@@ -34,6 +34,7 @@ export type SceneObject = {
   /** Path under /assets/ or inline text for type=text */
   asset?: string;
   content?: string;
+  links?: { label: string; href: string }[];
   position: ScenePosition;
   scale: number;
   rotation?: number;

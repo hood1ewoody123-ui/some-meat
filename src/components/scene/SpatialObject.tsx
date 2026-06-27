@@ -161,6 +161,7 @@ export function SpatialObject({
               content={layoutObject.content}
               maxWidth={layoutObject.displayWidth ?? 280}
               align={layoutObject.textAlign ?? "center"}
+              links={layoutObject.links}
             />
           )}
         </div>

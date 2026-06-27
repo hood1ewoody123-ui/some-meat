@@ -49,7 +49,14 @@ export const composition06: Composition = {
     {
       id: "finale-social-text",
       type: "text",
-      content: "видео и соц сети:\nинст · тг · мерч",
+      content: "видео и соц сети:",
+      links: [
+        {
+          label: "инст",
+          href: "https://www.instagram.com/somemeat.party?igsh=MTJuMzJueWM2OXJsNg==",
+        },
+        { label: "тг", href: "https://t.me/somemeat_party" },
+      ],
       position: { x: -163, y: 138, z: -15250 },
       scale: 1.6,
       lifecycle: { focusZ: -15250, exitDirection: "down" },
